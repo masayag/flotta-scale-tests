@@ -5,7 +5,7 @@ usage()
 cat << EOF
 Usage: $0 OPTIONS
 
-This script runs test plan for k4e using jmeter for testing k4e-operator.
+This script runs test plan for project-flotta using jmeter for testing flotta-operator.
 OPTIONS:
    -c      Max concurrent reconcilers (default: 3)
    -d      Total of edge devices
@@ -15,7 +15,10 @@ OPTIONS:
    -i      Number of iterations
    -j      Jmeter home directory
    -k      K8s bearer token for accessing OCP API server
+   -l      Log level (default: error)
+   -m      Run must-gather to collect logs (default: false)
    -n      Test run ID
+   -o      Edge deployment updates concurrency (default: 5)
    -p      Total of edge deployments per device
    -r      Ramp-up time in seconds to create all edge devices
    -s      Address of OCP API server
@@ -26,9 +29,9 @@ EOF
 
 get_k8s_bearer_token()
 {
-secrets=$(kubectl get serviceaccount k4e-scale -o json | jq -r '.secrets[].name')
+secrets=$(kubectl get serviceaccount flotta-scale -o json | jq -r '.secrets[].name')
 if [[ -z $secrets ]]; then
-    echo "INFO: No secrets found for serviceaccount k4e-scale"
+    echo "INFO: No secrets found for serviceaccount flotta-scale"
     return 1
 fi
 
@@ -37,7 +40,7 @@ kubectl get secret $secrets -o json | jq -r '.items[] | select(.type == "kuberne
 
 parse_args()
 {
-while getopts "c:d:e:g:h:i:j:k:n:p:r:s:t:v" option; do
+while getopts "c:d:e:g:h:i:j:k:l:m:n:o:p:r:s:t:v" option; do
     case "${option}"
     in
         c) MAX_CONCURRENT_RECONCILES=${OPTARG};;
@@ -47,8 +50,10 @@ while getopts "c:d:e:g:h:i:j:k:n:p:r:s:t:v" option; do
         i) ITERATIONS=${OPTARG};;
         j) JMETER_HOME=${OPTARG};;
         k) K8S_BEARER_TOKEN=${OPTARG};;
-        l) EDGEDEPLOYMENT_CONCURRENCY=${OPTARG};;
+        l) LOG_LEVEL=${OPTARG};;
+        m) MUST_GATHER=${OPTARG};;
         n) TEST_ID=${OPTARG};;
+        o) EDGEDEPLOYMENT_CONCURRENCY=${OPTARG};;
         p) EDGE_DEPLOYMENTS_PER_DEVICE=${OPTARG};;
         r) RAMP_UP_TIME=${OPTARG};;
         s) OCP_API_SERVER=${OPTARG};;
@@ -110,6 +115,11 @@ if [[ -z $ITERATIONS ]]; then
     exit 1
 fi
 
+if [[ -z $LOG_LEVEL ]]; then
+    LOG_LEVEL="error"
+    echo "INFO: Log level not specified. Using default value: $LOG_LEVEL"
+fi
+
 if [[ -z $OCP_API_SERVER ]]; then
     echo "ERROR: OCP API server is required"
     usage
@@ -117,7 +127,7 @@ if [[ -z $OCP_API_SERVER ]]; then
 fi
 
 if [[ -z $K8S_BEARER_TOKEN ]]; then
-    echo "INFO: K8s bearer token is not provided. Trying to set it from cluster for k4e-scale service account"
+    echo "INFO: K8s bearer token is not provided. Trying to set it from cluster for flotta-scale service account"
     K8S_BEARER_TOKEN=$( get_k8s_bearer_token )
     if [ "$?" == "1" ]; then
       # Create a service account
@@ -125,13 +135,13 @@ if [[ -z $K8S_BEARER_TOKEN ]]; then
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: k4e-scale
+  name: flotta-scale
 EOF
       # Attach the service account to a privileged role
-      kubectl create clusterrolebinding k4e-scale-cluster-admin --clusterrole=cluster-admin --serviceaccount=default:k4e-scale
+      kubectl create clusterrolebinding flotta-scale-cluster-admin --clusterrole=cluster-admin --serviceaccount=default:flotta-scale
       K8S_BEARER_TOKEN=$( get_k8s_bearer_token )
       if [ "$K8S_BEARER_TOKEN" == "" ]; then
-        echo "ERROR: Failed to create token for k4e-scale service account"
+        echo "ERROR: Failed to create token for flotta-scale service account"
         exit 1
       fi
     fi
@@ -146,6 +156,10 @@ fi
 if [[ -z $JMETER_HOME ]]; then
     JMETER_HOME=/home/test/apache-jmeter-5.4.1
     echo "INFO: Jmeter home directory is not provided. Using default value: $JMETER_HOME"
+    if [ ! -d "$JMETER_HOME" ]; then
+        echo "ERROR: Jmeter home directory $JMETER_HOME does not exist"
+        exit 1
+    fi
 fi
 
 if [[ ! -f $TEST_PLAN ]]; then
@@ -221,18 +235,21 @@ edgedeploy=$(oc get edgedeployments | wc -l)
 
 echo "After test: There are $edgedevices edge devices and $edgedeploy edge deployments" >> $test_dir/summary.txt
 logs_dir=$test_dir/logs
-mkdir -p $logs_dir/must-gather
+mkdir -p $logs_dir
 
-oc adm must-gather --dest-dir=$logs_dir/must-gather 2>/dev/null 1>/dev/null
-tar --remove-files -cvzf $logs_dir/must-gather.tar.gz $logs_dir/must-gather 2>/dev/null 1>/dev/null
+if [[ -n $MUST_GATHER ]]; then
+  mkdir -p $logs_dir/must-gather
+  oc adm must-gather --dest-dir=$logs_dir/must-gather 2>/dev/null 1>/dev/null
+  tar --remove-files -cvzf $logs_dir/must-gather.tar.gz $logs_dir/must-gather 2>/dev/null 1>/dev/null
+fi
 
 # Collect additional logs
-pods=$(oc get pod -n k4e-operator-system -o name)
+pods=$(oc get pod -n flotta -o name)
 for p in $pods
 do
-  if [[ $p =~ "pod/k4e-operator-controller-manager".* ]]; then
+  if [[ $p =~ "pod/flotta-operator-controller-manager".* ]]; then
     pod_log=$logs_dir/${p#*/}.log
-    oc logs -n k4e-operator-system $p -c manager > $pod_log
+    oc logs -n flotta $p -c manager > $pod_log
     gzip $pod_log
   fi
 done
@@ -242,13 +259,13 @@ ELAPSED_TIME=$(($SECONDS - $START_TIME))
 echo "INFO: Test run completed in $((ELAPSED_TIME/60)) min $((ELAPSED_TIME%60)) sec"
 }
 
-patch_k4e_operator()
+patch_flotta_operator()
 {
-echo "INFO: Patching k4e-operator"
+echo "INFO: Patching flotta-operator"
 
-kubectl patch cm -n k4e-operator-system k4e-operator-manager-config --type merge --patch '
+kubectl patch cm -n flotta flotta-operator-manager-config --type merge --patch '
 { "data": {
-    "LOG_LEVEL": "error",
+    "LOG_LEVEL": "'$LOG_LEVEL'",
     "OBC_AUTO_CREATE": "false",
      "MAX_CONCURRENT_RECONCILES": "'$MAX_CONCURRENT_RECONCILES'",
      "EDGEDEPLOYMENT_CONCURRENCY": "'$EDGEDEPLOYMENT_CONCURRENCY'"}
@@ -270,7 +287,7 @@ echo "Total CPU: $total_cpu"
 echo "----------------------------------------------------"
 } >> $test_dir/summary.txt
 
-kubectl patch deployment k4e-operator-controller-manager -n k4e-operator-system -p '
+kubectl patch deployment flotta-operator-controller-manager -n flotta -p '
 { "spec": {
     "template": {
       "spec":
@@ -289,9 +306,9 @@ kubectl patch deployment k4e-operator-controller-manager -n k4e-operator-system 
     }
 }'
 
-kubectl scale --replicas=0 deployment k4e-operator-controller-manager -n k4e-operator-system
-kubectl scale --replicas=$REPLICAS deployment k4e-operator-controller-manager -n k4e-operator-system
-kubectl wait --for=condition=available -n k4e-operator-system deployment.apps/k4e-operator-controller-manager
+kubectl scale --replicas=0 deployment flotta-operator-controller-manager -n flotta
+kubectl scale --replicas=$REPLICAS deployment flotta-operator-controller-manager -n flotta
+kubectl wait --for=condition=available -n flotta deployment.apps/flotta-operator-controller-manager
 
 count=0
 
@@ -319,14 +336,14 @@ log_pods_details()
 {
 {
 echo "----------------------------------------------------"
-kubectl get pods -n k4e-operator-system -o wide
-kubectl top pods -n k4e-operator-system --use-protocol-buffers
+kubectl get pods -n flotta -o wide
+kubectl top pods -n flotta --use-protocol-buffers
 } >> $test_dir/summary.txt
 }
 
 parse_args "$@"
 log_run_details
-patch_k4e_operator
+patch_flotta_operator
 log_pods_details
 run_test
 log_pods_details

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.4.1">
   <hashTree>
-    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="K4E Test Plan - Edge Devices only" enabled="true">
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Flotta Test Plan - Edge Devices only" enabled="true">
       <stringProp name="TestPlan.comments">The test plan will not include edge deployments creation</stringProp>
       <boolProp name="TestPlan.functional_mode">false</boolProp>
       <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
@@ -31,7 +31,7 @@
         </collectionProp>
         <collectionProp name="UserParameters.thread_values">
           <collectionProp name="1074148568">
-            <stringProp name="-1384578503">k4e-operator-controller-manager-k4e-operator-system.apps.mycluster.redhat.com</stringProp>
+            <stringProp name="-1384578503">flotta-operator-controller-manager-flotta-operator-system.apps.mycluster.redhat.com</stringProp>
             <stringProp name="0"></stringProp>
             <stringProp name="-1649297033">${__P(OCP_API_SERVER,api.mycluster.redhat.com)}</stringProp>
             <stringProp name="1660349">6443</stringProp>
@@ -74,7 +74,7 @@
                 <stringProp name="118040362">${__UUID()}</stringProp>
                 <stringProp name="974807112">${__RandomString(10,abcdefg)}</stringProp>
                 <stringProp name="974807112">${__RandomString(10,abcdefg)}</stringProp>
-                <stringProp name="-914205160">${__RandomString(10,abcdefg)}.${__RandomString(5,abcdefg)}.k4e</stringProp>
+                <stringProp name="-914205160">${__RandomString(10,abcdefg)}.${__RandomString(5,abcdefg)}.flotta</stringProp>
                 <stringProp name="1355597914">${__RandomString(2, ABCDEF0123456789)}:${__RandomString(2, ABCDEF0123456789)}:${__RandomString(2, ABCDEF0123456789)}:${__RandomString(2, ABCDEF0123456789)}:${__RandomString(2, ABCDEF0123456789)}:${__RandomString(2, ABCDEF0123456789)}</stringProp>
                 <stringProp name="1355597914">${__RandomString(2, ABCDEF0123456789)}:${__RandomString(2, ABCDEF0123456789)}:${__RandomString(2, ABCDEF0123456789)}:${__RandomString(2, ABCDEF0123456789)}:${__RandomString(2, ABCDEF0123456789)}:${__RandomString(2, ABCDEF0123456789)}</stringProp>
               </collectionProp>
@@ -405,7 +405,7 @@
             <stringProp name="HTTPSampler.port">${HTTP_SERVER_PORT}</stringProp>
             <stringProp name="HTTPSampler.protocol">http</stringProp>
             <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
-            <stringProp name="HTTPSampler.path">/api/k4e-management/v1/data/${DEVICE_ID}/out</stringProp>
+            <stringProp name="HTTPSampler.path">/api/flotta-management/v1/data/${DEVICE_ID}/out</stringProp>
             <stringProp name="HTTPSampler.method">POST</stringProp>
             <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
             <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
@@ -463,7 +463,7 @@
             <stringProp name="HTTPSampler.port">${OCP_API_PORT}</stringProp>
             <stringProp name="HTTPSampler.protocol">https</stringProp>
             <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
-            <stringProp name="HTTPSampler.path">/apis/management.k4e.io/v1alpha1/namespaces/${NAMESPACE}/edgedevices/${DEVICE_ID}</stringProp>
+            <stringProp name="HTTPSampler.path">/apis/management.project-flotta.io/v1alpha1/namespaces/${NAMESPACE}/edgedevices/${DEVICE_ID}</stringProp>
             <stringProp name="HTTPSampler.method">PATCH</stringProp>
             <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
             <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
@@ -515,7 +515,7 @@
             <stringProp name="HTTPSampler.port">${HTTP_SERVER_PORT}</stringProp>
             <stringProp name="HTTPSampler.protocol">http</stringProp>
             <stringProp name="HTTPSampler.contentEncoding"></stringProp>
-            <stringProp name="HTTPSampler.path">/api/k4e-management/v1/data/${DEVICE_ID}/in</stringProp>
+            <stringProp name="HTTPSampler.path">/api/flotta-management/v1/data/${DEVICE_ID}/in</stringProp>
             <stringProp name="HTTPSampler.method">GET</stringProp>
             <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
             <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
@@ -559,7 +559,7 @@
           <stringProp name="HTTPSampler.port">${HTTP_SERVER_PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
           <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
-          <stringProp name="HTTPSampler.path">/api/k4e-management/v1/data/${DEVICE_ID}/out</stringProp>
+          <stringProp name="HTTPSampler.path">/api/flotta-management/v1/data/${DEVICE_ID}/out</stringProp>
           <stringProp name="HTTPSampler.method">POST</stringProp>
           <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
           <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
