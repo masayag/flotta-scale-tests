@@ -256,7 +256,7 @@ done
 
 gzip $test_dir/results.csv
 ELAPSED_TIME=$(($SECONDS - $START_TIME))
-echo "INFO: Test run completed in $((ELAPSED_TIME/60)) min $((ELAPSED_TIME%60)) sec"
+echo "INFO: Test run completed in $((ELAPSED_TIME/60)) min $((ELAPSED_TIME%60)) sec" >> $test_dir/summary.txt
 }
 
 patch_flotta_operator()
